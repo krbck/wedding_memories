@@ -1,0 +1,19 @@
+{
+  "nav": {
+    "home": "Ana Sayfa",
+    "gallery": "Galeri"
+  },
+  "home": {
+    "title": "Düğünümüze Hoş Geldiniz",
+    "subtitle": "Özel anlarınızı bizimle paylaşın",
+    "uploadButton": "Medya Yükle",
+    "uploading": "Yükleniyor...",
+    "uploaded": "Yüklendi"
+  },
+  "gallery": {
+    "title": "Düğün Galerimiz"
+  },
+  "common": {
+    "weddingTitle": "Düğünümüz"
+  }
+} 

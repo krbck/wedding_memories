@@ -1,0 +1,19 @@
+{
+  "nav": {
+    "home": "Home",
+    "gallery": "Gallery"
+  },
+  "home": {
+    "title": "Welcome to Our Wedding",
+    "subtitle": "Share your special moments with us",
+    "uploadButton": "Upload Media",
+    "uploading": "Uploading...",
+    "uploaded": "Uploaded"
+  },
+  "gallery": {
+    "title": "Our Wedding Gallery"
+  },
+  "common": {
+    "weddingTitle": "Our Wedding"
+  }
+} 
