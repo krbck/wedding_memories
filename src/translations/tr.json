@@ -11,7 +11,12 @@
     "uploaded": "Yüklendi"
   },
   "gallery": {
-    "title": "Düğün Galerimiz"
+    "title": "Düğün Galerimiz",
+    "uploadMedia": "Medya Yükle",
+    "uploading": "Yükleniyor...",
+    "invalidFileType": "Lütfen bir resim veya video dosyası seçin",
+    "fileTooLarge": "Dosya boyutu 10MB'dan küçük olmalıdır",
+    "uploadError": "Dosya yüklenemedi. Lütfen tekrar deneyin."
   },
   "common": {
     "weddingTitle": "Düğünümüz"

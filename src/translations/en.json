@@ -11,7 +11,12 @@
     "uploaded": "Uploaded"
   },
   "gallery": {
-    "title": "Our Wedding Gallery"
+    "title": "Our Wedding Gallery",
+    "uploadMedia": "Upload Media",
+    "uploading": "Uploading...",
+    "invalidFileType": "Please select an image or video file",
+    "fileTooLarge": "File size must be less than 10MB",
+    "uploadError": "Failed to upload file. Please try again."
   },
   "common": {
     "weddingTitle": "Our Wedding"

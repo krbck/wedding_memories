@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { 
   Container, 
   Typography, 
@@ -7,32 +7,46 @@ import {
   LinearProgress,
   Card,
   CardMedia,
-  Grid,
   AppBar,
   Toolbar,
   Link,
   Paper,
-  IconButton
+  IconButton,
+  Menu,
+  MenuItem,
+  Alert
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { useTranslation } from 'react-i18next';
 import LanguageIcon from '@mui/icons-material/Language';
+import { GalleryContext } from '../App';
 
 interface UploadedFile {
   file: File;
   progress: number;
   preview: string;
+  error?: string;
 }
 
 function Home() {
   const { t, i18n } = useTranslation();
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const { addGalleryItem } = useContext(GalleryContext);
 
-  const toggleLanguage = () => {
-    const newLang = i18n.language === 'en' ? 'tr' : 'en';
-    i18n.changeLanguage(newLang);
+  const handleLanguageMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleLanguageMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLanguageChange = (lang: string) => {
+    i18n.changeLanguage(lang);
+    handleLanguageMenuClose();
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,21 +62,84 @@ function Home() {
 
     setUploadedFiles(prev => [...prev, ...newFiles]);
 
-    // Simulate upload progress
+    // Upload each file
     newFiles.forEach((file, index) => {
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 10;
+      const isImage = file.file.type.startsWith('image/');
+      const isVideo = file.file.type.startsWith('video/');
+
+      if (!isImage && !isVideo) {
         setUploadedFiles(prev => 
           prev.map((f, i) => 
-            i === index ? { ...f, progress } : f
+            i === index ? { ...f, error: t('gallery.invalidFileType') } : f
           )
         );
-        if (progress >= 100) {
-          clearInterval(interval);
-          setUploading(false);
+        return;
+      }
+
+      if (file.file.size > 10 * 1024 * 1024) {
+        setUploadedFiles(prev => 
+          prev.map((f, i) => 
+            i === index ? { ...f, error: t('gallery.fileTooLarge') } : f
+          )
+        );
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file.file);
+
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const progress = Math.round((event.loaded * 100) / event.total);
+          setUploadedFiles(prev => 
+            prev.map((f, i) => 
+              i === index ? { ...f, progress } : f
+            )
+          );
         }
-      }, 200);
+      });
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            addGalleryItem({
+              id: data.id,
+              type: isImage ? 'image' : 'video',
+              url: `/api/media/${data.id}`,
+              title: file.file.name,
+              timestamp: new Date().toISOString()
+            });
+          } catch (err) {
+            setUploadedFiles(prev => 
+              prev.map((f, i) => 
+                i === index ? { ...f, error: t('gallery.uploadError') } : f
+              )
+            );
+          }
+        } else {
+          setUploadedFiles(prev => 
+            prev.map((f, i) => 
+              i === index ? { ...f, error: `Upload failed: ${xhr.statusText}` } : f
+            )
+          );
+        }
+        setUploading(false);
+      });
+
+      xhr.addEventListener('error', () => {
+        setUploadedFiles(prev => 
+          prev.map((f, i) => 
+            i === index ? { ...f, error: t('gallery.uploadError') } : f
+          )
+        );
+        setUploading(false);
+      });
+
+      xhr.open('POST', '/api/media');
+      xhr.send(formData);
     });
   };
 
@@ -79,7 +156,7 @@ function Home() {
             {t('common.weddingTitle')}
           </Typography>
           <IconButton 
-            onClick={toggleLanguage} 
+            onClick={handleLanguageMenuOpen}
             sx={{ 
               color: 'primary.main',
               mr: 2,
@@ -91,6 +168,31 @@ function Home() {
           >
             <LanguageIcon />
           </IconButton>
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleLanguageMenuClose}
+            sx={{
+              '& .MuiPaper-root': {
+                borderRadius: 2,
+                mt: 1.5,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+              }
+            }}
+          >
+            <MenuItem onClick={() => handleLanguageChange('tr')} sx={{ 
+              fontStyle: 'italic',
+              color: i18n.language === 'tr' ? 'primary.main' : 'inherit'
+            }}>
+              TR
+            </MenuItem>
+            <MenuItem onClick={() => handleLanguageChange('en')} sx={{ 
+              fontStyle: 'italic',
+              color: i18n.language === 'en' ? 'primary.main' : 'inherit'
+            }}>
+              ENG
+            </MenuItem>
+          </Menu>
           <Link component={RouterLink} to="/gallery" color="primary" underline="none" sx={{ 
             '&:hover': { 
               color: 'primary.dark',
@@ -149,6 +251,7 @@ function Home() {
                 component="span"
                 startIcon={<CloudUploadIcon />}
                 size="large"
+                disabled={uploading}
                 sx={{
                   background: 'linear-gradient(45deg, #4a4a4a 30%, #757575 90%)',
                   '&:hover': {
@@ -156,35 +259,39 @@ function Home() {
                   }
                 }}
               >
-                {t('home.uploadButton')}
+                {uploading ? t('home.uploading') : t('home.uploadButton')}
               </Button>
             </label>
           </Box>
 
-          <Grid container spacing={3} justifyContent="center">
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
             {uploadedFiles.map((file, index) => (
-              <Grid item xs={12} sm={6} md={4} key={index}>
-                <Card sx={{ height: '100%' }}>
-                  {file.file.type.startsWith('image/') ? (
-                    <CardMedia
-                      component="img"
-                      height="200"
-                      image={file.preview}
-                      alt={`Uploaded ${index + 1}`}
-                      sx={{ objectFit: 'cover' }}
-                    />
+              <Card key={index} sx={{ height: '100%' }}>
+                {file.file.type.startsWith('image/') ? (
+                  <CardMedia
+                    component="img"
+                    height="200"
+                    image={file.preview}
+                    alt={`Uploaded ${index + 1}`}
+                    sx={{ objectFit: 'cover' }}
+                  />
+                ) : (
+                  <CardMedia
+                    component="video"
+                    height="200"
+                    src={file.preview}
+                    controls
+                  />
+                )}
+                <Box sx={{ p: 2 }}>
+                  <Typography variant="body2" noWrap>
+                    {file.file.name}
+                  </Typography>
+                  {file.error ? (
+                    <Alert severity="error" sx={{ mt: 1 }}>
+                      {file.error}
+                    </Alert>
                   ) : (
-                    <CardMedia
-                      component="video"
-                      height="200"
-                      src={file.preview}
-                      controls
-                    />
-                  )}
-                  <Box sx={{ p: 2 }}>
-                    <Typography variant="body2" noWrap>
-                      {file.file.name}
-                    </Typography>
                     <LinearProgress 
                       variant="determinate" 
                       value={file.progress} 
@@ -199,11 +306,11 @@ function Home() {
                         }
                       }}
                     />
-                  </Box>
-                </Card>
-              </Grid>
+                  )}
+                </Box>
+              </Card>
             ))}
-          </Grid>
+          </Box>
         </Paper>
       </Container>
     </Box>
