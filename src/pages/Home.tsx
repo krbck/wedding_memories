@@ -60,7 +60,7 @@ function Home() {
       preview: URL.createObjectURL(file)
     }));
 
-    setUploadedFiles(prev => [...prev, ...newFiles]);
+    setUploadedFiles(prev => [...newFiles, ...prev]);
 
     // Upload each file
     newFiles.forEach((file, index) => {
