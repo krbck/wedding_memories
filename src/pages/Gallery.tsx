@@ -21,22 +21,23 @@ import { Link as RouterLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import LanguageIcon from '@mui/icons-material/Language';
 import CloseIcon from '@mui/icons-material/Close';
-import ImageIcon from '@mui/icons-material/Image';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import { GalleryContext } from '../App';
 import { UploadMedia } from '../components/UploadMedia';
 
-interface SelectedMedia {
+interface GalleryItem {
+  id: string;
   type: 'image' | 'video';
   url: string;
   title: string;
+  timestamp: string;
 }
 
 function Gallery() {
   const { t, i18n } = useTranslation();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const { galleryItems, isLoading, error } = useContext(GalleryContext);
-  const [selectedMedia, setSelectedMedia] = useState<SelectedMedia | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<GalleryItem | null>(null);
 
   const handleLanguageMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -51,8 +52,96 @@ function Gallery() {
     handleLanguageMenuClose();
   };
 
-  const handleMediaClick = (item: SelectedMedia) => {
-    setSelectedMedia(item);
+  const handleMediaClick = (item: GalleryItem) => {
+    if (item.type === 'video') {
+      const videoElement = document.createElement('video');
+      videoElement.src = `/api/media/${item.url.split('/').pop()}`;
+      videoElement.controls = true;
+      videoElement.style.width = '100%';
+      videoElement.style.height = '100%';
+      videoElement.style.position = 'fixed';
+      videoElement.style.top = '0';
+      videoElement.style.left = '0';
+      videoElement.style.zIndex = '9999';
+      videoElement.style.backgroundColor = 'black';
+      videoElement.style.objectFit = 'contain';
+      
+      const handleClose = () => {
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+        } else if ((document as any).webkitFullscreenElement) {
+          (document as any).webkitExitFullscreen();
+        } else if ((document as any).mozFullScreenElement) {
+          (document as any).mozCancelFullScreen();
+        } else if ((document as any).msFullscreenElement) {
+          (document as any).msExitFullscreen();
+        }
+        document.body.removeChild(videoElement);
+        document.body.style.overflow = 'auto';
+      };
+      
+      // Handle fullscreen change
+      const handleFullscreenChange = () => {
+        if (!document.fullscreenElement && 
+            !(document as any).webkitFullscreenElement && 
+            !(document as any).mozFullScreenElement && 
+            !(document as any).msFullscreenElement) {
+          handleClose();
+        }
+      };
+      
+      // Handle back button
+      const handleBackButton = (e: PopStateEvent) => {
+        e.preventDefault();
+        handleClose();
+        window.history.pushState(null, '', window.location.href);
+      };
+      
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
+      document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+      window.addEventListener('popstate', handleBackButton);
+      
+      videoElement.onended = handleClose;
+      
+      document.body.style.overflow = 'hidden';
+      document.body.appendChild(videoElement);
+      
+      // Push a new state to enable back button
+      window.history.pushState(null, '', window.location.href);
+      
+      // Request fullscreen when video starts playing
+      videoElement.onplay = () => {
+        if (videoElement.requestFullscreen) {
+          videoElement.requestFullscreen();
+        } else if ((videoElement as any).webkitRequestFullscreen) {
+          (videoElement as any).webkitRequestFullscreen();
+        } else if ((videoElement as any).mozRequestFullScreen) {
+          (videoElement as any).mozRequestFullScreen();
+        } else if ((videoElement as any).msRequestFullscreen) {
+          (videoElement as any).msRequestFullscreen();
+        }
+      };
+
+      // Clean up event listeners when video is closed
+      const cleanup = () => {
+        document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+        window.removeEventListener('popstate', handleBackButton);
+      };
+
+      videoElement.addEventListener('ended', cleanup);
+      videoElement.addEventListener('pause', () => {
+        if (!document.fullscreenElement) {
+          cleanup();
+        }
+      });
+    } else {
+      setSelectedMedia(item);
+    }
   };
 
   const handleCloseModal = () => {
@@ -180,33 +269,12 @@ function Gallery() {
                   }}
                   onClick={() => handleMediaClick(item)}
                 >
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      top: 8,
-                      left: 8,
-                      zIndex: 1,
-                      backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                      borderRadius: '50%',
-                      padding: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    {item.type === 'image' ? (
-                      <ImageIcon sx={{ color: 'white', fontSize: 20 }} />
-                    ) : (
-                      <VideocamIcon sx={{ color: 'white', fontSize: 20 }} />
-                    )}
-                  </Box>
                   <CardMedia
-                    component={item.type === 'image' ? 'img' : 'video'}
+                    component={item.type === 'video' ? 'video' : 'img'}
                     height="200"
-                    image={item.type === 'image' ? `/api/media/${item.id}` : undefined}
-                    src={item.type === 'video' ? `/api/media/${item.id}` : undefined}
+                    image={item.type === 'video' ? undefined : `/api/media/${item.url.split('/').pop()}`}
+                    src={item.type === 'video' ? `/api/media/${item.url.split('/').pop()}` : undefined}
                     alt={item.title}
-                    controls={false}
                     sx={{
                       objectFit: 'cover',
                       aspectRatio: '4/3',
@@ -216,6 +284,25 @@ function Gallery() {
                       }
                     }}
                   />
+                  {item.type === 'video' && (
+                    <Box
+                      sx={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        zIndex: 1,
+                        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                        borderRadius: '50%',
+                        padding: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <VideocamIcon sx={{ color: 'white', fontSize: 32 }} />
+                    </Box>
+                  )}
                 </Card>
               ))}
             </Box>
@@ -225,7 +312,7 @@ function Gallery() {
 
       {/* Modal for enlarged media */}
       <Modal
-        open={Boolean(selectedMedia)}
+        open={Boolean(selectedMedia && selectedMedia.type === 'image')}
         onClose={handleCloseModal}
         sx={{
           display: 'flex',
@@ -265,29 +352,17 @@ function Gallery() {
           >
             <CloseIcon />
           </MuiIconButton>
-          {selectedMedia && (
-            selectedMedia.type === 'image' ? (
-              <img
-                src={`/api/media/${selectedMedia.url.split('/').pop()}`}
-                alt={selectedMedia.title}
-                style={{
-                  maxWidth: '100%',
-                  maxHeight: '80vh',
-                  objectFit: 'contain',
-                  borderRadius: 8
-                }}
-              />
-            ) : (
-              <video
-                src={`/api/media/${selectedMedia.url.split('/').pop()}`}
-                controls
-                style={{
-                  maxWidth: '100%',
-                  maxHeight: '80vh',
-                  borderRadius: 8
-                }}
-              />
-            )
+          {selectedMedia && selectedMedia.type === 'image' && (
+            <img
+              src={`/api/media/${selectedMedia.url.split('/').pop()}`}
+              alt={selectedMedia.title}
+              style={{
+                maxWidth: '100%',
+                maxHeight: '80vh',
+                objectFit: 'contain',
+                borderRadius: 8
+              }}
+            />
           )}
         </Box>
       </Modal>

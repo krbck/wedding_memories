@@ -76,14 +76,6 @@ function Home() {
         return;
       }
 
-      if (file.file.size > 10 * 1024 * 1024) {
-        setUploadedFiles(prev => 
-          prev.map((f, i) => 
-            i === index ? { ...f, error: t('gallery.fileTooLarge') } : f
-          )
-        );
-        return;
-      }
 
       const formData = new FormData();
       formData.append('file', file.file);
@@ -211,10 +203,10 @@ function Home() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        py: 4
+        py: { xs: 2, sm: 3, md: 4 }
       }}>
         <Paper elevation={0} sx={{ 
-          p: { xs: 3, md: 6 },
+          p: { xs: 2, sm: 3, md: 4 },
           borderRadius: 4,
           backgroundColor: 'rgba(255, 255, 255, 0.9)',
           backdropFilter: 'blur(10px)',
@@ -223,7 +215,8 @@ function Home() {
           maxWidth: '800px'
         }}>
           <Typography variant="h2" component="h1" gutterBottom sx={{ 
-            mb: 4,
+            mb: { xs: 2, sm: 3, md: 4 },
+            fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
             background: 'linear-gradient(45deg, #4a4a4a 30%, #757575 90%)',
             backgroundClip: 'text',
             textFillColor: 'transparent',
@@ -232,7 +225,11 @@ function Home() {
           }}>
             {t('home.title')}
           </Typography>
-          <Typography variant="h5" color="text.secondary" paragraph sx={{ mb: 6 }}>
+          <Typography variant="h5" color="text.secondary" paragraph sx={{ 
+            mb: { xs: 3, sm: 4, md: 6 },
+            fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' },
+            px: { xs: 1, sm: 2 }
+          }}>
             {t('home.subtitle')}
           </Typography>
 
